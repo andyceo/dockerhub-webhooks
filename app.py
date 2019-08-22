@@ -16,6 +16,8 @@ with open('./config.json', 'r') as f:
 class WebServer(BaseHTTPRequestHandler):
 
     def do_GET(self):
+        logging.info("Received GET query: '%s'", self.path)
+
         # Send response status code
         self.send_response(200)
 
