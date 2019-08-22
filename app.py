@@ -104,7 +104,7 @@ class WebServer(BaseHTTPRequestHandler):
 def run():
     logging.basicConfig(level=logging.INFO)
     logging.info('Starting httpd...\n')
-    server_address = ('127.0.0.1', 8081)
+    server_address = ('0.0.0.0', 8130)
     httpd = HTTPServer(server_address, WebServer)
     logging.info('Running httpd...\n')
     try:
