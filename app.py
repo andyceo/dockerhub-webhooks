@@ -58,7 +58,7 @@ class WebServer(BaseHTTPRequestHandler):
             # (Re)Deploy the stack
             logging.info("Deploying %s to stack %s...", image, stack)
 
-            res = subprocess.run(["docker", "stack", "deploy", "-c", filepath, stack], capture_output=True)
+            res = subprocess.run(["/usr/bin/docker", "stack", "deploy", "-c", filepath, stack], capture_output=True)
 
             if res.returncode:
                 logging.error("Failed to deploy %s to stack %s!", image, stack)
@@ -83,7 +83,7 @@ class WebServer(BaseHTTPRequestHandler):
             # (Re)Deploy the image and force a restart of the associated service
             logging.info("Deploying %s to service %s...", image, service)
 
-            res = subprocess.run(["docker", "service", "update", service, "-force", '-image=%s'.format(image)], capture_output=True)
+            res = subprocess.run(["/usr/bin/docker", "service", "update", service, "-force", '-image=%s'.format(image)], capture_output=True)
 
             if res.returncode:
                 logging.error("Failed to deploy %s to %s!", image, service)
