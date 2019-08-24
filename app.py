@@ -104,7 +104,11 @@ class WebServer(BaseHTTPRequestHandler):
 
 
 def run():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s [%(name)s.%(module)s.%(funcName)s:%(lineno)d] %(message)s",
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
     logging.info('Starting httpd...\n')
     server_address = ('0.0.0.0', 8130)
     httpd = HTTPServer(server_address, WebServer)
