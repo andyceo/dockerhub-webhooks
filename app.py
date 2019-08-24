@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import logging
 import subprocess
+import sys
 
 
 with open('./config.json', 'r') as f:
@@ -29,7 +30,8 @@ class WebServer(BaseHTTPRequestHandler):
         message = "Hello world!"
         # Write content as utf-8 data
         self.wfile.write(bytes(message, "utf8"))
-        return
+
+        sys.stdout.flush()
 
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
@@ -57,6 +59,7 @@ class WebServer(BaseHTTPRequestHandler):
 
             # (Re)Deploy the stack
             logging.info("Deploying %s to stack %s...", image, stack)
+            sys.stdout.flush()
 
             res = subprocess.run(["/usr/bin/docker", "stack", "deploy", "-c", filepath, stack], capture_output=True)
 
@@ -82,6 +85,7 @@ class WebServer(BaseHTTPRequestHandler):
 
             # (Re)Deploy the image and force a restart of the associated service
             logging.info("Deploying %s to service %s...", image, service)
+            sys.stdout.flush()
 
             res = subprocess.run(["/usr/bin/docker", "service", "update", service, "-force", '-image=%s'.format(image)], capture_output=True)
 
@@ -102,6 +106,8 @@ class WebServer(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(bytes('OK (service)\n', "utf8"))
 
+        sys.stdout.flush()
+
 
 def run():
     logging.basicConfig(
@@ -113,6 +119,7 @@ def run():
     server_address = ('0.0.0.0', 8130)
     httpd = HTTPServer(server_address, WebServer)
     logging.info('Running httpd...\n')
+    sys.stdout.flush()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
