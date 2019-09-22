@@ -17,5 +17,13 @@
     "my-org/my-other-repo:development": {
       "service": "my-other-docker-service"
     }
-  }
+  },
+
+  "intervals": [
+    {
+      "interval": 1,
+      "priority": 1,
+      "command": "echo Hello World!"
+    }
+  ]
 }

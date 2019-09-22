@@ -4,14 +4,10 @@ from http.server import HTTPServer
 from pylibs.webserver import WebServer
 import json
 import logging
+import sched
 import subprocess
 import sys
-
-
-with open('./config.json', 'r') as f:
-    cfg = json.load(f)
-    services = cfg['services']
-    stacks = cfg['stacks']
+import threading
 
 
 # HTTPRequestHandler class
@@ -31,7 +27,8 @@ class DockerHubWebhookWebServer(WebServer):
                      str(self.path), str(self.headers), body.decode('utf-8'))
 
         if image not in services and image not in stacks:
-            logging.warning("Received update for '%s', but nor services nor stacks are configured to handle updates for this image.", image)
+            logging.warning("Received update for '%s', but nor services nor stacks are configured to handle updates "
+                            "for this image.", image)
             self.send_response(404)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
@@ -71,7 +68,8 @@ class DockerHubWebhookWebServer(WebServer):
             logging.info("Deploying %s to service %s...", image, service)
             sys.stdout.flush()
 
-            res = subprocess.run(["/usr/bin/docker", "service", "update", service, "-force", '-image=%s'.format(image)], capture_output=True)
+            res = subprocess.run(["/usr/bin/docker", "service", "update", service,
+                                  "-force", '-image=%s'.format(image)], capture_output=True)
 
             if res.returncode:
                 logging.error("Failed to deploy %s to %s!", image, service)
@@ -94,11 +92,6 @@ class DockerHubWebhookWebServer(WebServer):
 
 
 def run():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] %(levelname)s [%(name)s.%(module)s.%(funcName)s:%(lineno)d] %(message)s",
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
     logging.info('Starting httpd...\n')
     server_address = ('0.0.0.0', 8130)
     httpd = HTTPServer(server_address, DockerHubWebhookWebServer)
@@ -111,4 +104,58 @@ def run():
     httpd.server_close()
     logging.info('Stopping httpd...\n')
 
-run()
+
+class ThreadedIntervalScheduler(threading.Thread):
+    _scheduler = None
+    _stop_intervals = False
+
+    def exec_interval(self, interval, priority, cmds):
+        logging.info('Executing command %s...', ' '.join(cmds))
+        res = subprocess.run(cmds, capture_output=True)
+        logging.info('Command %s exited with code %d', ' '.join(cmds), res.returncode)
+        logging.info('STDOUT:')
+        logging.info(res.stdout)
+        logging.info('STDERR:')
+        logging.info(res.stderr)
+        sys.stdout.flush()
+        if not self._stop_intervals:
+            self._scheduler.enter(interval, priority, self.exec_interval, (interval, priority, cmds,))
+
+    def start_intervals(self, scheduler, intervals):
+        self._scheduler = scheduler
+        _stop_intervals = False
+
+        for i in intervals:
+            cmds = i['command'].split(' ')
+            self._scheduler.enter(i['interval'], i['priority'],
+                                  self.exec_interval, (i['interval'], i['priority'], cmds))
+
+        logging.info('Intervals initialized!')
+
+    def stop_intervals(self):
+        self._stop_intervals = True
+        list(map(self._scheduler.cancel, self._scheduler.queue))
+        logging.info('Intervals queue cleaned!')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] %(levelname)s [%(name)s.%(module)s.%(funcName)s:%(lineno)d] %(message)s",
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    with open('./config.json', 'r') as f:
+        cfg = json.load(f)
+        services = cfg['services']
+        stacks = cfg['stacks']
+        intervals = cfg['intervals']
+
+    scheduler = sched.scheduler()
+
+    t = ThreadedIntervalScheduler(target=scheduler.run)
+    t.start_intervals(scheduler, intervals)
+    t.start()
+    run()
+    t.stop_intervals()
+    t.join()
