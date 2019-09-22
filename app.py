@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import HTTPServer
+from pylibs.webserver import WebServer
 import json
 import logging
 import subprocess
@@ -14,24 +15,7 @@ with open('./config.json', 'r') as f:
 
 
 # HTTPRequestHandler class
-class WebServer(BaseHTTPRequestHandler):
-
-    def do_GET(self):
-        logging.info("Received GET query: '%s'", self.path)
-
-        # Send response status code
-        self.send_response(200)
-
-        # Send headers
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-
-        # Send message back to client
-        message = "Hello world!"
-        # Write content as utf-8 data
-        self.wfile.write(bytes(message, "utf8"))
-
-        sys.stdout.flush()
+class DockerHubWebhookWebServer(WebServer):
 
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
@@ -117,7 +101,7 @@ def run():
     )
     logging.info('Starting httpd...\n')
     server_address = ('0.0.0.0', 8130)
-    httpd = HTTPServer(server_address, WebServer)
+    httpd = HTTPServer(server_address, DockerHubWebhookWebServer)
     logging.info('Running httpd...\n')
     sys.stdout.flush()
     try:
